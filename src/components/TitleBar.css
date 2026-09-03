@@ -1,0 +1,89 @@
+.titlebar {
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  user-select: none;
+  background: var(--bg-sidebar);
+  border-bottom: 2px solid var(--border);
+}
+
+.titlebar-drag {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  min-width: 0;
+  cursor: default;
+}
+
+.titlebar-mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px #bdaea0;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.titlebar-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.titlebar-extra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.titlebar-controls {
+  display: flex;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.titlebar-controls button {
+  width: 42px;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border-radius: 0;
+}
+
+.titlebar-controls button:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+}
+
+.titlebar-close:hover {
+  background: var(--danger) !important;
+  color: #fff !important;
+}
+
+.titlebar-settings {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  box-shadow: 0 2px #d4c9b4;
+}
+
+.titlebar-settings:hover,
+.titlebar-settings.active {
+  color: var(--accent);
+}

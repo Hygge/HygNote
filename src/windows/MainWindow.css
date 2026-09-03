@@ -1,0 +1,270 @@
+.main-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+}
+
+.main-body {
+  display: grid;
+  grid-template-columns: 196px 1fr;
+  min-height: 0;
+  flex: 1;
+  transition: grid-template-columns 0.25s var(--ease);
+}
+
+.timeline-collapsed .main-body {
+  grid-template-columns: 0 1fr;
+}
+
+.timeline {
+  background: var(--bg-sidebar);
+  border-right: 2px solid var(--border);
+  padding: 16px 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+.timeline-collapsed .timeline {
+  padding: 0;
+  border-right: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.timeline-today {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border-radius: 16px;
+  border: 2px solid var(--border);
+}
+
+.timeline-today strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.timeline-today span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.timeline-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 16px;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.timeline-item:hover {
+  background: #d6dff0;
+}
+
+.timeline-item.active {
+  background: #b7c6e5;
+  color: var(--text);
+}
+
+.timeline-item .count {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.titlebar-search {
+  width: 220px;
+}
+
+.search-hit {
+  background: #f7cd67;
+  color: inherit;
+  border-radius: 6px;
+  padding: 0 2px;
+  font-weight: 700;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.notes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 12px;
+}
+
+.note-group {
+  margin-bottom: 24px;
+}
+
+.date-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding: 6px 0 8px;
+  background: var(--bg);
+}
+
+.note-item {
+  margin-bottom: 12px;
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.note-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.note-actions {
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease);
+}
+
+.note-item:hover .note-actions,
+.note-item.is-editing .note-actions {
+  opacity: 1;
+}
+
+.note-content {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  word-break: break-word;
+  cursor: text;
+  font-weight: 500;
+}
+
+.note-content-body.is-collapsed {
+  max-height: calc(1.7em * 4);
+  overflow: hidden;
+  mask-image: linear-gradient(180deg, #000 70%, transparent);
+}
+
+.note-content-body.is-expanded {
+  max-height: none;
+}
+
+.note-expand {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 16px;
+}
+
+.note-item.is-editing .note-editor-wrap {
+  margin-bottom: 10px;
+  flex: none;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-faint);
+}
+
+.empty-state p {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.empty-state span {
+  font-size: 13px;
+}
+
+.composer {
+  flex-shrink: 0;
+  background: var(--bg-elevated);
+  border-top: 2px solid var(--border);
+  padding: 14px 16px 16px;
+}
+
+.tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 8px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.composer form {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.composer-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.composer textarea {
+  width: 100%;
+  min-height: 56px;
+  max-height: 140px;
+  padding: 12px 18px;
+  background: var(--bg-input);
+  border-radius: 24px;
+  box-shadow: 0 3px #d4c9b4;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.composer textarea:focus {
+  outline: 2px solid #ffcc00;
+  outline-offset: 2px;
+}
