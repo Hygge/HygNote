@@ -2,6 +2,10 @@
 
 一个基于 Tauri 2、React 和 TypeScript 的本地桌面笔记本。笔记以时间流形式记录，支持悬浮窗快速输入、标签、搜索、Markdown 基础格式、图片粘贴和 Windows 安装包。
 
+## 演示图片
+
+![](demo.png)
+
 ## 功能
 
 ### 主窗口
