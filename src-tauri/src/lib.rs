@@ -116,6 +116,12 @@ pub fn run() {
             sql: "ALTER TABLE notes ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "add_note_locked",
+            sql: "ALTER TABLE notes ADD COLUMN locked INTEGER NOT NULL DEFAULT 0;",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

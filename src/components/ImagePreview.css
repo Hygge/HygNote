@@ -15,7 +15,7 @@
   max-width: min(96vw, 1400px);
   max-height: 88vh;
   object-fit: contain;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: #fff;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
@@ -46,7 +46,7 @@
   height: 88px;
   padding: 0;
   border: 2px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--bg-input);
   cursor: zoom-in;

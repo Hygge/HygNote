@@ -16,7 +16,7 @@
 .note-upload {
   height: 32px;
   padding: 0 12px;
-  border-radius: 50px;
+  border-radius: var(--radius-md);
   display: inline-flex;
   align-items: center;
   font-size: 12px;
@@ -44,7 +44,7 @@
   min-height: 88px;
   padding: 12px 16px;
   background: var(--bg-input);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 3px #d4c9b4;
   font-size: 14px;
   line-height: 1.65;
@@ -80,7 +80,7 @@
   max-width: 100%;
   max-height: 320px;
   margin: 8px 0;
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   object-fit: contain;
   background: var(--bg-input);
   cursor: zoom-in;

@@ -17,10 +17,11 @@ import {
   getTimelineCounts,
   PAGE_SIZE,
   searchNotes,
+  toggleLock,
   togglePin,
   updateNote,
 } from "../lib/db";
-import { formatDateLabel, formatTime, groupNotesByDate } from "../lib/date";
+import { daysAgo, formatDateLabel, formatTime, groupNotesByDate } from "../lib/date";
 import { collectTags } from "../lib/tags";
 import { tagColor } from "../lib/theme";
 import type { Note } from "../lib/types";
@@ -51,6 +52,8 @@ export function MainWindow() {
     []
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { themeId, setThemeId } = useTheme();
   const listRef = useRef<HTMLDivElement>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
@@ -80,7 +83,10 @@ export function MainWindow() {
     if (filtered || data.length === 0) {
       setHasMore(false);
     } else {
-      const oldest = Math.min(...data.map((note) => note.created_at));
+      const unpinned = data.filter((note) => !note.pinned);
+      const oldest = unpinned.length
+        ? Math.min(...unpinned.map((note) => note.created_at))
+        : daysAgo(6);
       const older = await getOlderNotes(oldest, 1);
       setHasMore(older.length > 0);
     }
@@ -127,7 +133,19 @@ export function MainWindow() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const groupedNotes = groupNotesByDate(notes);
+  const pinnedNotes = notes.filter((note) => note.pinned);
+  const groupedNotes = groupNotesByDate(notes.filter((note) => !note.pinned));
+  const noteGroups = [
+    ...(pinnedNotes.length
+      ? [{ key: "pinned", label: "置顶", notes: pinnedNotes, dateLabel: "" }]
+      : []),
+    ...Array.from(groupedNotes.entries()).map(([dateLabel, group]) => ({
+      key: dateLabel,
+      label: dateLabel,
+      notes: group,
+      dateLabel,
+    })),
+  ];
   const todayLabel = useMemo(() => {
     const now = new Date();
     const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
@@ -143,10 +161,10 @@ export function MainWindow() {
 
   const loadMore = async () => {
     if (filtered || loadingMore || !hasMore || notes.length === 0) return;
-    const oldest = Math.min(
-      ...notes.filter((note) => !note.pinned).map((note) => note.created_at),
-      notes[notes.length - 1].created_at
-    );
+    const unpinned = notes.filter((note) => !note.pinned);
+    const oldest = unpinned.length
+      ? Math.min(...unpinned.map((note) => note.created_at))
+      : daysAgo(6);
     setLoadingMore(true);
     try {
       const older = await getOlderNotes(oldest);
@@ -188,16 +206,34 @@ export function MainWindow() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (editingId === id) {
-      setEditingId(null);
+  const cancelDelete = () => {
+    if (deleting) return;
+    setPendingDeleteId(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId || deleting) return;
+    const id = pendingDeleteId;
+    setDeleting(true);
+    try {
+      if (editingId === id) {
+        setEditingId(null);
+      }
+      await deleteNote(id);
+      setPendingDeleteId(null);
+      await loadNotes();
+    } finally {
+      setDeleting(false);
     }
-    await deleteNote(id);
-    await loadNotes();
   };
 
   const handleTogglePin = async (id: string, currentPinned: number) => {
     await togglePin(id, currentPinned === 0);
+    await loadNotes();
+  };
+
+  const handleToggleLock = async (id: string, currentLocked: number) => {
+    await toggleLock(id, currentLocked === 0);
     await loadNotes();
   };
 
@@ -252,7 +288,7 @@ export function MainWindow() {
   return (
     <div className={`main-window ${timelineOpen ? "" : "timeline-collapsed"}`}>
       <TitleBar
-        title="小岛笔记"
+        title="HygNote"
         extra={
           <>
             <div className="titlebar-search" ref={searchWrapRef}>
@@ -329,14 +365,14 @@ export function MainWindow() {
 
         <div className="main-content">
           <div className="notes-list" ref={listRef} onScroll={onListScroll}>
-            {Array.from(groupedNotes.entries()).map(([dateLabel, groupNotes]) => (
+            {noteGroups.map((group) => (
               <div
-                key={dateLabel}
+                key={group.key}
                 className="note-group"
-                id={`date-${dateLabel}`}
+                id={group.dateLabel ? `date-${group.dateLabel}` : undefined}
               >
-                <div className="date-header">{dateLabel}</div>
-                {groupNotes.map((note) => {
+                <div className="date-header">{group.label}</div>
+                {group.notes.map((note) => {
                   const editing = editingId === note.id;
                   const expanded = expandedIds.has(note.id);
                   return (
@@ -344,12 +380,25 @@ export function MainWindow() {
                       key={note.id}
                       hoverable={!editing}
                       color={note.pinned ? "app-yellow" : "default"}
-                      className={`note-item ${editing ? "is-editing" : ""}`}
+                      className={`note-item ${editing ? "is-editing" : ""} ${note.locked ? "is-locked" : ""}`}
                     >
                       <div className="note-header">
                         <span className="note-time">
                           {formatTime(note.created_at)}
                           {note.pinned ? " · 置顶" : ""}
+                          {note.locked ? " · 私密" : ""}
+                          <button
+                            type="button"
+                            className={`note-lock ${note.locked ? "is-on" : ""}`}
+                            title={note.locked ? "取消私密" : "设为私密"}
+                            aria-label={note.locked ? "取消私密" : "设为私密"}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleToggleLock(note.id, note.locked);
+                            }}
+                          >
+                            <span className="note-lock-icon" aria-hidden="true" />
+                          </button>
                         </span>
                         <div className="note-actions">
                           {editing ? (
@@ -385,7 +434,10 @@ export function MainWindow() {
                               <Button
                                 size="small"
                                 danger
-                                onClick={() => handleDelete(note.id)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setPendingDeleteId(note.id);
+                                }}
                               >
                                 删除
                               </Button>
@@ -512,6 +564,38 @@ export function MainWindow() {
         onClose={() => setSettingsOpen(false)}
         onThemeChange={setThemeId}
       />
+
+      {pendingDeleteId ? (
+        <div
+          className="confirm-mask"
+          onClick={cancelDelete}
+          role="presentation"
+        >
+          <div
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-confirm-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <strong id="delete-confirm-title">删除这条笔记？</strong>
+            <p>删除后无法恢复。</p>
+            <div className="confirm-actions">
+              <Button size="small" disabled={deleting} onClick={cancelDelete}>
+                取消
+              </Button>
+              <Button
+                size="small"
+                danger
+                loading={deleting}
+                onClick={confirmDelete}
+              >
+                确认删除
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -7,7 +7,7 @@
   min-height: 40px;
   padding: 6px 12px;
   background: var(--bg-input);
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 3px #d4c9b4;
 }
 
@@ -43,5 +43,5 @@
   padding: 10px;
   background: var(--bg-elevated);
   border: 2px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
 }

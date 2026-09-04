@@ -4,6 +4,7 @@
   height: 100vh;
   background: var(--bg);
   border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
 }
 
 .float-form {

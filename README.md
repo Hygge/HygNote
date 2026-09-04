@@ -12,7 +12,7 @@
 - 滚动到底部自动加载更早的笔记，每页 40 条
 - 笔记默认折叠为约 4 行，支持展开和收起
 - 双击笔记或点击“编辑”修改内容和标签
-- 支持置顶、取消置顶和删除
+- 支持置顶、取消置顶、上锁私密和删除
 - 搜索笔记内容和标签
 - `Ctrl+F` 快速聚焦搜索框
 - 左侧时间轴和标签筛选可以隐藏
@@ -101,6 +101,87 @@ NoteData/
 
 安装脚本会把数据目录记录到程序目录的 `data-dir.txt`。程序目录和数据目录不要混用，尤其不要把数据写入 `Program Files`。
 
+## MCP 使用说明
+
+HygNote 提供只读 MCP，给外部 AI 查询**公开笔记**。上锁私密笔记由服务端强制过滤，外部 AI 无法读取。
+
+完整接入说明见 [mcp/README.md](./mcp/README.md)。
+
+### 前置条件
+
+- 本机已安装 Node.js 18+
+- 已安装 HygNote，或使用便携版解压目录
+
+### 安装版接入
+
+当前用户安装后，把下面配置加入外部 AI 的 MCP 设置：
+
+```json
+{
+  "mcpServers": {
+    "hygnote": {
+      "command": "%LOCALAPPDATA%\\HygNote\\mcp\\hygnote-mcp.cmd"
+    }
+  }
+}
+```
+
+如果外部 AI 不展开环境变量，改成实际路径，例如：
+
+```json
+{
+  "mcpServers": {
+    "hygnote": {
+      "command": "C:\\Users\\你的用户名\\AppData\\Local\\HygNote\\mcp\\hygnote-mcp.cmd"
+    }
+  }
+}
+```
+
+### 便携版接入
+
+把解压目录里的入口配进去：
+
+```json
+{
+  "mcpServers": {
+    "hygnote": {
+      "command": "D:\\解压目录\\mcp\\hygnote-mcp.cmd"
+    }
+  }
+}
+```
+
+### 可用工具
+
+| 工具 | 作用 | 参数 |
+| --- | --- | --- |
+| `list_recent_public_notes` | 列出最近公开笔记 | `days` 默认 7，`limit` 默认 20，最大 100 |
+| `search_public_notes` | 按关键词和/或标签搜索公开笔记 | `query`、`tag`、`limit` |
+
+两个工具都不会返回 `locked` 字段，也不会返回上锁笔记。
+
+### 权限限制
+
+- 只读，不能新增、修改、删除笔记
+- 不能直接打开或导出整个 `notes.db`
+- `locked = 1` 的私密笔记永远不会出现在结果里
+- 没有公开结果时，应说明“没有公开笔记”，不要猜测私密内容
+
+### 开发调试
+
+仓库内可直接使用：
+
+```json
+{
+  "mcpServers": {
+    "hygnote": {
+      "command": "D:\\dev\\code\\ai\\note\\mcp\\hygnote-mcp.cmd"
+    }
+  }
+}
+```
+
 ## 开发环境
 
 - Node.js 18+
@@ -149,15 +230,36 @@ src-tauri\target\release\bundle\nsis\
 通常可以在该目录找到：
 
 ```text
-Note_0.1.0_x64-setup.exe
+HygNote_0.1.1_x64-setup.exe
 ```
 
-当前安装模式为 `currentUser`，默认不需要管理员权限。安装器会检查并安装 WebView2 引导程序，目标机器没有 WebView2 时需要联网。
+当前安装模式为 `currentUser`，默认不需要管理员权限。安装器会检查并安装 WebView2 引导程序，目标机器没有 WebView2 时需要联网。安装包会同时带上 MCP 入口文件。
+
+本机已安装时，先退出 HygNote，再直接运行新版本 setup.exe 覆盖安装。笔记数据在 `%USERPROFILE%\Documents\NoteData`，覆盖安装不会删除。
+
+便携版：
+
+```text
+打包便携版.bat
+```
+
+输出：
+
+```text
+src-tauri\target\release\bundle\HygNote_0.1.1_x64-portable.zip
+```
+
+解压后可直接运行 `HygNote.exe`，MCP 入口在同级 `mcp\hygnote-mcp.cmd`。
 
 ## 项目结构
 
 ```text
 HygNote/
+├── mcp/
+│   ├── server.mjs           # MCP stdio 服务
+│   ├── db.mjs               # 只读查询，强制过滤私密笔记
+│   ├── hygnote-mcp.cmd      # 外部 AI 接入入口
+│   └── README.md            # MCP 使用说明
 ├── src/
 │   ├── components/
 │   │   ├── NoteEditor.tsx       # Markdown 编辑器、图片粘贴和缩略图
@@ -187,6 +289,7 @@ HygNote/
 │   └── Cargo.toml
 ├── 启动开发.bat
 ├── 打包安装.bat
+├── 打包便携版.bat
 └── package.json
 ```
 
@@ -200,6 +303,7 @@ CREATE TABLE notes (
     content TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     pinned INTEGER DEFAULT 0,
+    locked INTEGER NOT NULL DEFAULT 0,
     tags TEXT NOT NULL DEFAULT '[]'
 );
 

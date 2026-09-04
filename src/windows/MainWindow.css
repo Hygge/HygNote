@@ -40,7 +40,7 @@
   margin-bottom: 14px;
   padding: 10px 12px;
   background: var(--bg-elevated);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   border: 2px solid var(--border);
 }
 
@@ -70,7 +70,7 @@
   justify-content: space-between;
   width: 100%;
   padding: 8px 12px;
-  border-radius: 18px;
+  border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
@@ -134,7 +134,82 @@
 }
 
 .note-item {
+  position: relative;
+  isolation: isolate;
   margin-bottom: 12px;
+}
+
+.note-item::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 6px;
+  border: 1px solid color-mix(in srgb, var(--pin) 42%, transparent);
+  border-radius: var(--radius-md);
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.note-item::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: -7px;
+  right: 13px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 15%, #f39a9b 0 25%, transparent 27%),
+    radial-gradient(circle at 85% 50%, #f39a9b 0 25%, transparent 27%),
+    radial-gradient(circle at 50% 85%, #f39a9b 0 25%, transparent 27%),
+    radial-gradient(circle at 15% 50%, #f39a9b 0 25%, transparent 27%),
+    radial-gradient(circle at 50% 50%, #f5c85b 0 18%, transparent 20%);
+  filter: drop-shadow(0 1px 1px rgba(121, 79, 39, 0.18));
+}
+
+.note-item .note-header,
+.note-item .note-content,
+.note-item .tag-list,
+.note-item .note-editor-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.note-item .note-header::before,
+.note-item .note-header::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 8px;
+  border-radius: 100% 0 100% 0;
+  background: #82b86b;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.note-item .note-header::before {
+  top: -7px;
+  left: 3px;
+  transform: rotate(-35deg);
+  box-shadow: 11px 9px 0 -1px #a8c978;
+}
+
+.note-item .note-header::after {
+  right: 43px;
+  bottom: -13px;
+  transform: rotate(145deg);
+  box-shadow: -10px 8px 0 -1px #a8c978;
+}
+
+.note-item.is-editing::before {
+  opacity: 0.42;
+}
+
+.note-item,
+.empty-state {
+  border-radius: var(--radius-lg) !important;
 }
 
 .note-header {
@@ -146,9 +221,59 @@
 }
 
 .note-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-faint);
+}
+
+.note-lock {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity 0.15s var(--ease);
+}
+
+.note-lock:hover,
+.note-lock.is-on {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.note-lock-icon {
+  width: 12px;
+  height: 10px;
+  border: 1.6px solid currentColor;
+  border-radius: 2px 2px 3px 3px;
+  position: relative;
+}
+
+.note-lock-icon::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: -6px;
+  width: 6px;
+  height: 6px;
+  border: 1.6px solid currentColor;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+}
+
+.note-lock.is-on .note-lock-icon {
+  background: currentColor;
+}
+
+.note-item.is-locked {
+  outline: 1px dashed color-mix(in srgb, var(--text) 22%, transparent);
+  outline-offset: -5px;
 }
 
 .note-actions {
@@ -159,7 +284,10 @@
 }
 
 .note-item:hover .note-actions,
-.note-item.is-editing .note-actions {
+.note-item.is-editing .note-actions,
+.note-item:hover .note-lock,
+.note-item.is-editing .note-lock,
+.note-item.is-locked .note-lock {
   opacity: 1;
 }
 
@@ -258,7 +386,7 @@
   max-height: 140px;
   padding: 12px 18px;
   background: var(--bg-input);
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 3px #d4c9b4;
   font-size: 14px;
   line-height: 1.5;
@@ -267,4 +395,41 @@
 .composer textarea:focus {
   outline: 2px solid #ffcc00;
   outline-offset: 2px;
+}
+
+.confirm-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 14, 8, 0.42);
+}
+
+.confirm-dialog {
+  width: min(360px, calc(100vw - 48px));
+  padding: 20px 22px 16px;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 28px rgba(61, 52, 40, 0.18);
+}
+
+.confirm-dialog strong {
+  display: block;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.confirm-dialog p {
+  margin: 8px 0 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }

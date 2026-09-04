@@ -1,14 +1,15 @@
 {
   "name": "note",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "setup": "tauri build --bundles nsis"
+    "setup": "tauri build --bundles nsis",
+    "portable": "tauri build --no-bundle"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
