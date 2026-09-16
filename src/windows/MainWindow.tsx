@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Button, Card, Divider, Icon, Input, Tag, Title } from "animal-island-ui";
+import { Button, Card, DatePicker, Divider, Icon, Input, Tag, Title } from "animal-island-ui";
 import { TitleBar } from "../components/TitleBar";
 import { SettingsPanel } from "../components/SettingsPanel";
 import { TagInput } from "../components/TagInput";
@@ -12,6 +12,7 @@ import {
   deleteNote,
   gcImages,
   getAllTagNames,
+  getDateNoteInfo,
   getOlderNotes,
   getRecentNotes,
   getTimelineCounts,
@@ -21,13 +22,26 @@ import {
   togglePin,
   updateNote,
 } from "../lib/db";
-import { daysAgo, formatDateLabel, formatTime, groupNotesByDate } from "../lib/date";
+import {
+  daysAgo,
+  formatDateLabel,
+  formatDateLabelFromKey,
+  formatTime,
+  groupNotesByDate,
+} from "../lib/date";
 import { collectTags } from "../lib/tags";
 import { tagColor } from "../lib/theme";
 import type { Note } from "../lib/types";
 import "./MainWindow.css";
 
 const TIMELINE_KEY = "note.timeline.visible";
+const TIMELINE_PAGE_SIZE = 7;
+
+type TimelineItem = {
+  dateKey: string;
+  label: string;
+  count: number;
+};
 
 export function MainWindow() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -44,40 +58,106 @@ export function MainWindow() {
   const [draft, setDraft] = useState("");
   const [draftTags, setDraftTags] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [activeDate, setActiveDate] = useState<string>("");
+  const [activeDateKey, setActiveDateKey] = useState<string>("");
   const [activeTag, setActiveTag] = useState<string>("");
   const [query, setQuery] = useState("");
   const [allTags, setAllTags] = useState<string[]>([]);
-  const [timeline, setTimeline] = useState<Array<{ label: string; count: number }>>(
-    []
-  );
+  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
+  const [timelineHasMore, setTimelineHasMore] = useState(true);
+  const [timelineLoadingMore, setTimelineLoadingMore] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { themeId, setThemeId } = useTheme();
   const listRef = useRef<HTMLDivElement>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
-  const filtered = Boolean(query.trim() || activeTag);
+  const timelineItemsRef = useRef<HTMLDivElement>(null);
+
+  const filtered = Boolean(query.trim() || activeTag || activeDateKey);
+
+  const loadInitialTimeline = async () => {
+    const currentLimit = Math.max(timeline.length, TIMELINE_PAGE_SIZE);
+    const counts = await getTimelineCounts(currentLimit, 0);
+    const items: TimelineItem[] = counts.map((row) => ({
+      dateKey: row.date_key,
+      label: formatDateLabel(row.created_at),
+      count: Number(row.count),
+    }));
+
+    if (activeDateKey && !items.some((item) => item.dateKey === activeDateKey)) {
+      const info = await getDateNoteInfo(activeDateKey);
+      if (info) {
+        items.unshift({
+          dateKey: info.date_key,
+          label: formatDateLabelFromKey(info.date_key),
+          count: Number(info.count),
+        });
+        items.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+      }
+    }
+
+    setTimeline(items);
+    setTimelineHasMore(counts.length >= currentLimit);
+  };
+
+  const loadMoreTimeline = async () => {
+    if (timelineLoadingMore || !timelineHasMore) return;
+    setTimelineLoadingMore(true);
+    try {
+      const nextCounts = await getTimelineCounts(TIMELINE_PAGE_SIZE, timeline.length);
+      if (nextCounts.length === 0) {
+        setTimelineHasMore(false);
+        return;
+      }
+      const newItems: TimelineItem[] = nextCounts.map((row) => ({
+        dateKey: row.date_key,
+        label: formatDateLabel(row.created_at),
+        count: Number(row.count),
+      }));
+
+      setTimeline((prev) => {
+        const seen = new Set(prev.map((i) => i.dateKey));
+        const merged = [...prev];
+        for (const item of newItems) {
+          if (!seen.has(item.dateKey)) {
+            merged.push(item);
+            seen.add(item.dateKey);
+          }
+        }
+        return merged;
+      });
+      setTimelineHasMore(nextCounts.length >= TIMELINE_PAGE_SIZE);
+    } finally {
+      setTimelineLoadingMore(false);
+    }
+  };
+
+  const onTimelineScroll = () => {
+    const el = timelineItemsRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+      loadMoreTimeline();
+    }
+  };
+
+  const scrollActiveTimelineItemIntoView = (dateKey: string) => {
+    requestAnimationFrame(() => {
+      const el = timelineItemsRef.current?.querySelector<HTMLElement>(
+        `[data-date-key="${dateKey}"]`
+      );
+      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  };
 
   const loadMeta = async () => {
-    const [tags, counts] = await Promise.all([
-      getAllTagNames(),
-      getTimelineCounts(),
-    ]);
+    const tags = await getAllTagNames();
     setAllTags(tags);
-    const grouped = new Map<string, number>();
-    for (const row of counts) {
-      const label = formatDateLabel(row.created_at);
-      grouped.set(label, (grouped.get(label) ?? 0) + Number(row.count));
-    }
-    setTimeline(
-      Array.from(grouped.entries()).map(([label, count]) => ({ label, count }))
-    );
+    await loadInitialTimeline();
   };
 
   const loadNotes = async () => {
     const data = filtered
-      ? await searchNotes(query, activeTag)
+      ? await searchNotes(query, activeTag, activeDateKey)
       : await getRecentNotes(7);
     setNotes(data);
     if (filtered || data.length === 0) {
@@ -118,7 +198,7 @@ export function MainWindow() {
       }
     }, 180);
     return () => window.clearTimeout(timer);
-  }, [query, activeTag]);
+  }, [query, activeTag, activeDateKey]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -269,20 +349,14 @@ export function MainWindow() {
     });
   };
 
-  const jumpToDate = async (dateLabel: string) => {
-    setActiveDate(dateLabel);
-    const el = document.getElementById(`date-${dateLabel}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
+  const selectTimelineDate = (dateKey: string) => {
+    if (activeDateKey === dateKey) {
+      setActiveDateKey("");
+    } else {
+      setActiveDateKey(dateKey);
+      scrollActiveTimelineItemIntoView(dateKey);
     }
-    if (filtered) return;
-    await loadMore();
-    requestAnimationFrame(() => {
-      document
-        .getElementById(`date-${dateLabel}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -304,6 +378,23 @@ export function MainWindow() {
                 aria-label="搜索笔记"
               />
             </div>
+            <div className="titlebar-datepicker">
+              <DatePicker
+                size="small"
+                allowClear
+                placeholder="按日期筛选"
+                value={activeDateKey || null}
+                onChange={(val) => {
+                  if (!val || Array.isArray(val)) {
+                    setActiveDateKey("");
+                  } else {
+                    setActiveDateKey(val);
+                    scrollActiveTimelineItemIntoView(val);
+                  }
+                  listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              />
+            </div>
             <Button
               size="small"
               type={timelineOpen ? "primary" : "default"}
@@ -323,43 +414,67 @@ export function MainWindow() {
             <strong>{todayLabel.date}</strong>
             <span>{todayLabel.weekday}</span>
           </div>
-          <Title size="small">时间轴</Title>
-          <div className="timeline-items">
+          <div className="timeline-section-header">
+            <Title size="small">时间轴</Title>
+            {activeDateKey && (
+              <button
+                type="button"
+                className="timeline-clear-btn"
+                onClick={() => setActiveDateKey("")}
+              >
+                清除过滤
+              </button>
+            )}
+          </div>
+          <div
+            className="timeline-items"
+            ref={timelineItemsRef}
+            onScroll={onTimelineScroll}
+          >
             {timeline.map((item) => (
               <button
-                key={item.label}
+                key={item.dateKey}
+                data-date-key={item.dateKey}
                 type="button"
-                className={`timeline-item ${activeDate === item.label ? "active" : ""}`}
-                onClick={() => jumpToDate(item.label)}
+                className={`timeline-item ${activeDateKey === item.dateKey ? "active" : ""}`}
+                onClick={() => selectTimelineDate(item.dateKey)}
               >
                 <span>{item.label}</span>
                 <span className="count">{item.count}</span>
               </button>
             ))}
+            {timelineLoadingMore && (
+              <div className="timeline-loading-tip">加载中...</div>
+            )}
+            {!timelineHasMore && timeline.length > 0 && (
+              <div className="timeline-loading-tip">已无更多日期</div>
+            )}
           </div>
 
           <Divider type="wave-yellow" />
-          <Title size="small">标签</Title>
-          <div className="tag-filter">
-            <Tag
-              size="small"
-              variant={activeTag ? "soft" : "solid"}
-              color="app-teal"
-              onClick={() => setActiveTag("")}
-            >
-              全部
-            </Tag>
-            {allTags.map((tag) => (
+          <div className="timeline-tag-section">
+            <Title size="small">标签</Title>
+            <div className="tag-filter">
               <Tag
-                key={tag}
                 size="small"
-                variant={activeTag === tag ? "solid" : "soft"}
-                color={tagColor(tag)}
-                onClick={() => setActiveTag(activeTag === tag ? "" : tag)}
+                variant={activeTag ? "soft" : "solid"}
+                color="app-teal"
+                onClick={() => setActiveTag("")}
               >
-                {tag}
+                全部
               </Tag>
-            ))}
+              {allTags.map((tag) => (
+                <Tag
+                  key={tag}
+                  size="small"
+                  variant={activeTag === tag ? "solid" : "soft"}
+                  color={tagColor(tag)}
+                  onClick={() => setActiveTag(activeTag === tag ? "" : tag)}
+                >
+                  {tag}
+                </Tag>
+              ))}
+            </div>
           </div>
         </aside>
 
@@ -502,13 +617,28 @@ export function MainWindow() {
                     ? `没有找到「${query.trim()}」`
                     : activeTag
                       ? `没有「${activeTag}」相关笔记`
-                      : "小岛还很安静"}
+                      : activeDateKey
+                        ? `「${formatDateLabelFromKey(activeDateKey)}」暂无笔记`
+                        : "小岛还很安静"}
                 </p>
                 <span>
                   {query.trim()
                     ? "试试别的关键词，或点标签筛选"
-                    : "在下方记下一条，Enter 发送"}
+                    : activeDateKey
+                      ? "当天没有记录笔记，您可以点此清除筛选或在下方记录"
+                      : "在下方记下一条，Enter 发送"}
                 </span>
+                {activeDateKey && (
+                  <div className="empty-state-action">
+                    <Button
+                      size="small"
+                      type="primary"
+                      onClick={() => setActiveDateKey("")}
+                    >
+                      返回全部笔记
+                    </Button>
+                  </div>
+                )}
               </Card>
             )}
 

@@ -234,7 +234,7 @@ src-tauri\target\release\bundle\nsis\
 通常可以在该目录找到：
 
 ```text
-HygNote_0.1.1_x64-setup.exe
+HygNote_0.1.2_x64-setup.exe
 ```
 
 当前安装模式为 `currentUser`，默认不需要管理员权限。安装器会检查并安装 WebView2 引导程序，目标机器没有 WebView2 时需要联网。安装包会同时带上 MCP 入口文件。
@@ -250,7 +250,7 @@ HygNote_0.1.1_x64-setup.exe
 输出：
 
 ```text
-src-tauri\target\release\bundle\HygNote_0.1.1_x64-portable.zip
+src-tauri\target\release\bundle\HygNote_0.1.2_x64-portable.zip
 ```
 
 解压后可直接运行 `HygNote.exe`，MCP 入口在同级 `mcp\hygnote-mcp.cmd`。

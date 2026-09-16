@@ -42,6 +42,30 @@ fn get_data_dir() -> String {
     data_dir::resolve().to_string_lossy().replace('\\', "/")
 }
 
+#[tauri::command]
+fn get_mcp_config() -> Result<String, String> {
+    let command = resolve_mcp_command()?;
+    let escaped = command.replace('\\', "\\\\");
+    Ok(format!(
+        "{{\n  \"mcpServers\": {{\n    \"hygnote\": {{\n      \"command\": \"{escaped}\"\n    }}\n  }}\n}}"
+    ))
+}
+
+fn resolve_mcp_command() -> Result<String, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let mut dir = exe.parent().ok_or("missing exe directory")?.to_path_buf();
+    for _ in 0..6 {
+        let candidate = dir.join("mcp").join("hygnote-mcp.cmd");
+        if candidate.is_file() {
+            return Ok(candidate.to_string_lossy().replace('/', "\\"));
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+    Err("未找到 MCP 入口 hygnote-mcp.cmd".into())
+}
+
 fn image_dir() -> Result<std::path::PathBuf, String> {
     Ok(data_dir::ensure().join("images"))
 }
@@ -160,6 +184,7 @@ pub fn run() {
             create_float_window,
             close_float_window,
             get_data_dir,
+            get_mcp_config,
             save_note_image,
             purge_unused_images
         ])

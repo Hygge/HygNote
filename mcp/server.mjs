@@ -7,7 +7,7 @@ import {
 const PROTOCOL_VERSION = "2024-11-05";
 const SERVER_INFO = {
   name: "hygnote",
-  version: "0.1.1",
+  version: "0.1.2",
 };
 
 const TOOLS = [

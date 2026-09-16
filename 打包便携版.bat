@@ -11,7 +11,7 @@ if errorlevel 1 (
 )
 
 set "PORTABLE_DIR=src-tauri\target\release\portable"
-set "ZIP_FILE=src-tauri\target\release\bundle\HygNote_0.1.1_x64-portable.zip"
+set "ZIP_FILE=src-tauri\target\release\bundle\HygNote_0.1.2_x64-portable.zip"
 
 if exist "%PORTABLE_DIR%" rmdir /s /q "%PORTABLE_DIR%"
 if exist "%ZIP_FILE%" del /f /q "%ZIP_FILE%"
