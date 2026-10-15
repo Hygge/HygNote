@@ -176,7 +176,21 @@ pub fn run() {
                 if gs.is_registered(shortcut) {
                     let _ = gs.unregister(shortcut);
                 }
-                gs.register(shortcut)?;
+                if let Err(error) = gs.register(shortcut) {
+                    use std::io::Write;
+
+                    let warning = format!(
+                        "Ctrl+Shift+N registration failed; global shortcut unavailable: {error}"
+                    );
+                    eprintln!("{warning}");
+                    if let Ok(mut log) = fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(data_root.join("logs").join("startup.log"))
+                    {
+                        let _ = writeln!(log, "{warning}");
+                    }
+                }
             }
             Ok(())
         })
